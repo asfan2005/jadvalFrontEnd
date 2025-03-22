@@ -22,12 +22,42 @@ const api = {
 
   // Matnni testga o'girish
   convertTextToTest: async (text) => {
-    const response = await axios.post(
-      `${BASE_URL}/process-text-tests`,
-      { text: text.trim() },
-      { responseType: 'blob' }
-    );
-    return response.data;
+    try {
+      const response = await axios({
+        method: 'post',
+        url: `${BASE_URL}/process-text-tests`,
+        data: { text },
+        responseType: 'arraybuffer',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        }
+      });
+
+      if (response.status === 200) {
+        return new Blob([response.data], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        });
+      }
+
+      throw new Error('Serverdan kutilmagan javob');
+      
+    } catch (error) {
+      if (error.response) {
+        // Xato javobni tekshirish
+        if (error.response.data) {
+          try {
+            // ArrayBuffer'ni string'ga o'girish
+            const text = new TextDecoder().decode(error.response.data);
+            const errorData = JSON.parse(text);
+            throw new Error(errorData.error || 'Serverda xatolik yuz berdi');
+          } catch (e) {
+            throw new Error('Testlar formati noto\'g\'ri. Iltimos tekshirib qaytadan urinib ko\'ring.');
+          }
+        }
+      }
+      throw new Error('Server bilan bog\'lanishda xatolik yuz berdi. Iltimos qaytadan urinib ko\'ring.');
+    }
   },
 
   // Matnni slaydga o'girish
